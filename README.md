@@ -1,4 +1,4 @@
-# TrainGuard
+# ComputeFence
 
 Pre-flight validation and real-time monitoring for HuggingFace fine-tuning runs.
 
@@ -8,7 +8,7 @@ Fine-tuning on rented GPU compute has no safety net. You start a run, walk away,
 and find out hours later that it failed silently — CUDA fell back to CPU, the model 
 collapsed, the dataset had 28k duplicate rows. The billing clock ran the whole time.
 
-TrainGuard catches these failures before they cost you money.
+ComputeFence catches these failures before they cost you money.
 
 ## What it catches
 
@@ -34,10 +34,10 @@ TrainGuard catches these failures before they cost you money.
 
 ```bash
 # Validate a dataset before running
-trainguard check --dataset train_large_v15.csv
+ComputeFence check --dataset train_large_v15.csv
 
 # Wrap any existing training script
-trainguard run --script train_deberta_3class.py \
+ComputeFence run --script train_deberta_3class.py \
                --dataset train_large_v15.csv \
                --benchmark benchmark_test_set_v4.csv \
                --prev-model v11 \
@@ -45,12 +45,12 @@ trainguard run --script train_deberta_3class.py \
                --notify phone
 
 # Quick test mode — 10% data, 1 epoch
-trainguard run --script train_deberta_3class.py --quick-test
+ComputeFence run --script train_deberta_3class.py --quick-test
 ```
 
 ## Example output
 
-TrainGuard v1.0 — Pre-flight checks
+ComputeFence v1.0 — Pre-flight checks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✓ CUDA 13.0 detected — compatible with PyTorch 2.11
 ✓ GPU confirmed — H100 NVL 80GB
