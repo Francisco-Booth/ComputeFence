@@ -1,0 +1,2 @@
+[console_scripts]
+computefence = computefence.cli:main

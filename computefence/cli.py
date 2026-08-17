@@ -1,0 +1,101 @@
+import sys
+from rich.console import Console
+
+from computefence.checks.environment import check_environment
+from computefence.checks.storage import check_storage
+from computefence.checks.dataset import check_dataset
+
+console = Console()
+
+
+def print_result(result):
+    status = result.get("status")
+    message = result.get("message")
+    fix = result.get("fix")
+
+    if status == "pass":
+        console.print(f"  [green]✓[/green] {message}")
+    elif status == "warn":
+        console.print(f"  [yellow]⚠[/yellow] {message}")
+        if fix:
+            console.print(f"    [dim]Fix: {fix}[/dim]")
+    elif status == "fail":
+        console.print(f"  [red]✗[/red] {message}")
+        if fix:
+            console.print(f"    [dim]Fix: {fix}[/dim]")
+
+
+def doctor():
+    dataset = None
+    input_column = None
+    label_column = None
+
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--dataset" and i + 1 < len(args):
+            dataset = args[i + 1]
+            i += 2
+        elif args[i] == "--input-column" and i + 1 < len(args):
+            input_column = args[i + 1]
+            i += 2
+        elif args[i] == "--label-column" and i + 1 < len(args):
+            label_column = args[i + 1]
+            i += 2
+        else:
+            i += 1
+
+    console.print()
+    console.print("[bold]ComputeFence v0.1.0 — Pre-flight diagnostic[/bold]")
+    console.print("━" * 50)
+
+    console.print()
+    console.print("[bold blue]Environment[/bold blue]")
+    env_results = check_environment()
+    for result in env_results:
+        print_result(result)
+
+    console.print()
+    console.print("[bold blue]Storage[/bold blue]")
+    storage_results = check_storage()
+    for result in storage_results:
+        print_result(result)
+
+    console.print()
+    console.print("[bold blue]Dataset[/bold blue]")
+    dataset_results = check_dataset(
+        dataset_path=dataset,
+        input_column=input_column,
+        label_column=label_column,
+    )
+    for result in dataset_results:
+        print_result(result)
+
+    console.print()
+    console.print("━" * 50)
+
+    all_results = env_results + storage_results + dataset_results
+    failures = [r for r in all_results if r["status"] == "fail"]
+    warnings = [r for r in all_results if r["status"] == "warn"]
+
+    if failures:
+        console.print("[red]" + str(len(failures)) + " error(s) and " + str(len(warnings)) + " warning(s) found. Fix errors before launching.[/red]")
+    elif warnings:
+        console.print("[yellow]" + str(len(warnings)) + " warning(s) found. Review before launching.[/yellow]")
+    else:
+        console.print("[green]All checks passed. Safe to launch.[/green]")
+
+    console.print()
+
+
+def main():
+    args = sys.argv[1:]
+    if not args or args[0] == "doctor":
+        doctor()
+    else:
+        console.print(f"[red]Unknown command: {args[0]}[/red]")
+        console.print("Usage: computefence doctor")
+
+
+if __name__ == "__main__":
+    main()
