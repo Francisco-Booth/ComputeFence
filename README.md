@@ -43,7 +43,6 @@ Dataset
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 2 warning(s) found. Review before launching.
 
-
 ## What it checks
 
 - **CUDA and GPU visibility** — confirms PyTorch can see the GPU and training will not silently fall back to CPU
