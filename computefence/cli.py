@@ -1,6 +1,7 @@
 import sys
 from rich.console import Console
 
+from computefence import __version__
 from computefence.checks.environment import check_environment
 from computefence.checks.storage import check_storage
 from computefence.checks.dataset import check_dataset
@@ -46,37 +47,48 @@ def doctor():
             i += 1
 
     console.print()
-    console.print("[bold]ComputeFence v0.1.0 — Pre-flight diagnostic[/bold]")
+    console.print(f"[bold]ComputeFence v{__version__} — Pre-flight diagnostic[/bold]")
     console.print("━" * 50)
 
-    console.print()
-    console.print("[bold blue]Environment[/bold blue]")
+    # Run every check up front so the verdict line can be counted and printed
+    # above the individual results.
     env_results = check_environment()
-    for result in env_results:
-        print_result(result)
-
-    console.print()
-    console.print("[bold blue]Storage[/bold blue]")
     storage_results = check_storage()
-    for result in storage_results:
-        print_result(result)
-
-    console.print()
-    console.print("[bold blue]Dataset[/bold blue]")
     dataset_results = check_dataset(
         dataset_path=dataset,
         input_column=input_column,
         label_column=label_column,
     )
+
+    all_results = env_results + storage_results + dataset_results
+    failures = [r for r in all_results if r["status"] == "fail"]
+    warnings = [r for r in all_results if r["status"] == "warn"]
+    passed = [r for r in all_results if r["status"] == "pass"]
+
+    console.print()
+    console.print(
+        f"[yellow]{len(warnings)} WARNINGS[/yellow]  ·  "
+        f"[red]{len(failures)} BLOCKERS[/red]  ·  "
+        f"[green]{len(passed)} PASSED[/green]"
+    )
+
+    console.print()
+    console.print("[bold blue]Environment[/bold blue]")
+    for result in env_results:
+        print_result(result)
+
+    console.print()
+    console.print("[bold blue]Storage[/bold blue]")
+    for result in storage_results:
+        print_result(result)
+
+    console.print()
+    console.print("[bold blue]Dataset[/bold blue]")
     for result in dataset_results:
         print_result(result)
 
     console.print()
     console.print("━" * 50)
-
-    all_results = env_results + storage_results + dataset_results
-    failures = [r for r in all_results if r["status"] == "fail"]
-    warnings = [r for r in all_results if r["status"] == "warn"]
 
     if failures:
         console.print("[red]" + str(len(failures)) + " error(s) and " + str(len(warnings)) + " warning(s) found. Fix errors before launching.[/red]")
