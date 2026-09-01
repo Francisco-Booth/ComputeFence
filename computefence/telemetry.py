@@ -62,3 +62,4 @@ def record_run(results: list):
 
     thread = threading.Thread(target=_send, args=(payload,), daemon=True)
     thread.start()
+    thread.join(timeout=4)
