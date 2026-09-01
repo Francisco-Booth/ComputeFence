@@ -56,8 +56,6 @@ def doctor():
 
     all_results = env_results + storage_results + dataset_results
 
-    record_run(all_results)
-
     failures = [r for r in all_results if r["status"] == "fail"]
     warnings = [r for r in all_results if r["status"] == "warn"]
     passed = [r for r in all_results if r["status"] == "pass"]
@@ -89,10 +87,12 @@ def doctor():
     else:
         console.print("[green]All checks passed. Safe to launch.[/green]")
     console.print(
-        "[dim]Anonymous usage stats help improve ComputeFence. "
-        "Opt out: touch ~/.computefence_no_telemetry[/dim]"
+        "[dim]Anonymous run stats are collected to improve ComputeFence. "
+        "To opt out: touch ~/.computefence_no_telemetry[/dim]"
     )
     console.print()
+
+    record_run(all_results)
 
 def main():
     args = sys.argv[1:]
