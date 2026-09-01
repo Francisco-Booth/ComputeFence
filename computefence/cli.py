@@ -3,7 +3,7 @@ from rich.console import Console
 
 from computefence import __version__
 from computefence.checks.environment import check_environment
-from computefence.checks.storage import check_storage
+from computefence.checks.storage import check_disk_headroom, check_storage
 from computefence.checks.dataset import check_dataset
 
 console = Console()
@@ -53,7 +53,7 @@ def doctor():
     # Run every check up front so the verdict line can be counted and printed
     # above the individual results.
     env_results = check_environment()
-    storage_results = check_storage()
+    storage_results = check_storage() + check_disk_headroom()
     dataset_results = check_dataset(
         dataset_path=dataset,
         input_column=input_column,
