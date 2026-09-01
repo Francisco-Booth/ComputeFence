@@ -1,5 +1,14 @@
 import os
+import shutil
 from pathlib import Path
+
+# Persistent volume mount points used by the common GPU rental providers.
+MOUNT_CANDIDATES = ["/workspace", "/runpod-volume", "/vast"]
+
+GB = 1024 ** 3
+BLOCKER_BELOW_GB = 5
+WARNING_BELOW_GB = 20
+DISK_FIX = "Free up disk space or attach a larger volume before launching"
 
 
 def check_storage():
@@ -12,7 +21,7 @@ def check_storage():
 
     # Detect mounted persistent volumes
     mounted_volumes = []
-    for path in ["/workspace", "/runpod-volume", "/vast"]:
+    for path in MOUNT_CANDIDATES:
         if Path(path).exists():
             mounted_volumes.append(path)
 
@@ -60,5 +69,68 @@ def check_storage():
             "message": "No mounted persistent volumes detected at /workspace, /runpod-volume, or /vast",
             "fix": "Attach a network volume before training to persist checkpoints and cache"
         })
+
+    return results
+
+def check_disk_headroom():
+    """Report free space on the workspace volume(s) and the root disk.
+
+    Uses shutil.disk_usage rather than shelling out to df: it returns the same
+    numbers as exact bytes, with no output parsing and no subprocess.
+    """
+    results = []
+
+    # Build the target list, skipping any path that shares a device with one
+    # already queued so a single filesystem is not reported twice.
+    targets = []
+    seen_devices = set()
+    for path in MOUNT_CANDIDATES + ["/"]:
+        candidate = Path(path)
+        if not candidate.exists():
+            continue
+        try:
+            device = candidate.stat().st_dev
+        except OSError:
+            device = None
+        if device is not None:
+            if device in seen_devices:
+                continue
+            seen_devices.add(device)
+        targets.append(candidate)
+
+    for target in targets:
+        label = "Root disk (/)" if str(target) == "/" else f"Volume {target}"
+
+        try:
+            usage = shutil.disk_usage(target)
+        except OSError as e:
+            results.append({
+                "status": "warn",
+                "message": f"{label} — could not read disk usage: {e}",
+                "fix": DISK_FIX
+            })
+            continue
+
+        free_gb = usage.free / GB
+        total_gb = usage.total / GB
+        summary = f"{label} — {free_gb:.1f} GB free of {total_gb:.1f} GB"
+
+        if free_gb < BLOCKER_BELOW_GB:
+            results.append({
+                "status": "fail",
+                "message": f"{summary} (below {BLOCKER_BELOW_GB} GB)",
+                "fix": DISK_FIX
+            })
+        elif free_gb < WARNING_BELOW_GB:
+            results.append({
+                "status": "warn",
+                "message": f"{summary} (below {WARNING_BELOW_GB} GB)",
+                "fix": DISK_FIX
+            })
+        else:
+            results.append({
+                "status": "pass",
+                "message": summary
+            })
 
     return results
