@@ -8,7 +8,7 @@ MOUNT_CANDIDATES = ["/workspace", "/runpod-volume", "/vast"]
 GB = 1024 ** 3
 BLOCKER_BELOW_GB = 5
 WARNING_BELOW_GB = 20
-DISK_FIX = "Free up disk space or attach a larger volume before launching"
+DISK_FIX = "Free up disk space or move checkpoints to a larger volume: df -h to check usage"
 
 
 def check_storage():
@@ -67,7 +67,7 @@ def check_storage():
         results.append({
             "status": "warn",
             "message": "No mounted persistent volumes detected at /workspace, /runpod-volume, or /vast",
-            "fix": "Attach a network volume before training to persist checkpoints and cache"
+            "fix": "Mount a network volume at /workspace before launching your job"
         })
 
     return results

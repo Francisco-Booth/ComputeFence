@@ -119,7 +119,7 @@ def check_environment():
             results.append({
                 "status": "warn",
                 "message": f"PyTorch not found in {interpreter['executable']} — skipping GPU checks",
-                "fix": "Install PyTorch into this environment: https://pytorch.org/get-started/locally/"
+                "fix": "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118"
             })
         return results
 
@@ -217,7 +217,7 @@ def check_accelerate(config_path=None, torch_info=None):
             results.append({
                 "status": "fail",
                 "message": f"Accelerate config requests {num_processes} processes but only {visible_gpus} GPU(s) are visible",
-                "fix": f"Run 'accelerate config' and set num_processes to {visible_gpus} or fewer"
+                "fix": "Run accelerate config to update your GPU count then re-run doctor"
             })
         else:
             results.append({
