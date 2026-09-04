@@ -134,3 +134,51 @@ def check_disk_headroom():
             })
 
     return results
+
+
+# Paths that are wiped when a rented instance stops.
+EPHEMERAL_PREFIXES = ["/root", "/tmp"]
+# Paths that survive an instance restart.
+PERSISTENT_PREFIXES = ["/workspace", "/runpod-volume", "/vast", "/home"]
+OUTPUT_DIR_FIX = "Move your output_dir to /workspace/checkpoints or your mounted volume"
+
+
+def _is_under(path, prefix):
+    """True when path sits at or below prefix.
+
+    Compares path components rather than string prefixes so /workspace-old is
+    not mistaken for a child of /workspace. Avoids Path.is_relative_to, which
+    needs Python 3.9 while this package supports 3.8.
+    """
+    path_parts = Path(path).parts
+    prefix_parts = Path(prefix).parts
+    return path_parts[: len(prefix_parts)] == prefix_parts
+
+
+def check_output_dir(output_dir=None):
+    """Flag a checkpoint directory that will not survive the instance stopping.
+
+    Uses abspath rather than resolve() so a path is judged as written: on macOS
+    /tmp is a symlink to /private/tmp, and resolving it first would hide the
+    very ephemeral prefix this check exists to catch.
+    """
+    if output_dir is None:
+        return []
+
+    path = Path(os.path.abspath(os.path.expanduser(str(output_dir))))
+
+    is_ephemeral = any(_is_under(path, prefix) for prefix in EPHEMERAL_PREFIXES) or not any(
+        _is_under(path, prefix) for prefix in PERSISTENT_PREFIXES
+    )
+
+    if is_ephemeral:
+        return [{
+            "status": "fail",
+            "message": f"Output directory {path} is on ephemeral storage and will be lost when the instance stops",
+            "fix": OUTPUT_DIR_FIX
+        }]
+
+    return [{
+        "status": "pass",
+        "message": f"Output directory {path} is on persistent storage"
+    }]

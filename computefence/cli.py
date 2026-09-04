@@ -2,7 +2,7 @@ import sys
 from rich.console import Console
 from computefence import __version__
 from computefence.checks.environment import check_environment
-from computefence.checks.storage import check_disk_headroom, check_storage
+from computefence.checks.storage import check_disk_headroom, check_output_dir, check_storage
 from computefence.checks.dataset import check_dataset
 from computefence.telemetry import record_run
 
@@ -27,6 +27,7 @@ def doctor():
     dataset = None
     input_column = None
     label_column = None
+    output_dir = None
     args = sys.argv[1:]
     i = 0
     while i < len(args):
@@ -39,6 +40,9 @@ def doctor():
         elif args[i] == "--label-column" and i + 1 < len(args):
             label_column = args[i + 1]
             i += 2
+        elif args[i] == "--output-dir" and i + 1 < len(args):
+            output_dir = args[i + 1]
+            i += 2
         else:
             i += 1
 
@@ -47,7 +51,7 @@ def doctor():
     console.print("━" * 50)
 
     env_results = check_environment()
-    storage_results = check_storage() + check_disk_headroom()
+    storage_results = check_storage() + check_disk_headroom() + check_output_dir(output_dir)
     dataset_results = check_dataset(
         dataset_path=dataset,
         input_column=input_column,
