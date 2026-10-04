@@ -1,53 +1,39 @@
-# ComputeFence
+ComputeFence
 
-Pre-flight safety gate for ML training jobs on rented GPU compute. Built for RunPod, Vast.ai, Lambda Labs, CoreWeave, Paperspace, and any bare metal GPU provider.
+Don't lose another RunPod checkpoint to ephemeral disk before your job bills.
 
----
+One command before your training job starts. Catches the configuration mistakes that cost you hours of GPU compute and lost weights before billing begins.
 
-## Install
+Built for RunPod, Vast.ai, Lambda Labs, CoreWeave, Paperspace, and any bare metal GPU provider.
 
-```bash
+Install
+bash
 pip install computefence
-```
 
-Or with UV (no install required):
+No install required with UV:
 
-```bash
+bash
 uvx computefence doctor
-```
-
----
-
-## Usage
-
-```bash
+Usage
+bash
 computefence doctor
-```
 
-With a dataset:
+With dataset validation:
 
-```bash
+bash
 computefence doctor --dataset train.csv --input-column text --label-column label
-```
 
-With checkpoint output directory validation:
+With checkpoint directory validation:
 
-```bash
+bash
 computefence doctor --output-dir ./checkpoints
-```
 
 Add to your pod startup script so it runs automatically before every job:
 
-```bash
+bash
 pip install computefence && computefence doctor && python train.py
-```
-
----
-
-## Example output
-
-```
-ComputeFence v0.2.4 — Pre-flight diagnostic
+Example Output
+ComputeFence v0.2.5 — Pre-flight diagnostic
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 2 WARNINGS  ·  0 BLOCKERS  ·  3 PASSED
 
@@ -57,91 +43,91 @@ Environment
   ✓ CUDA available — NVIDIA A40
 
 Storage
-  ⚠ HF_HOME is not set. HuggingFace will use default local cache.
+  ⚠ HF_HOME is not set. HuggingFace will cache to ephemeral local disk.
     Fix: export HF_HOME=/workspace/.cache/huggingface
-  ⚠ Root disk (/) — 14.3 GB free of 460.4 GB (below 20 GB)
-    Fix: Free up disk space or move checkpoints to a larger volume: df -h to check usage
+
+  ⚠ Root disk (/) — 14.3 GB free of 460.4 GB (below 20 GB threshold)
+    Fix: Free up disk space or move checkpoints to a larger volume
+         df -h to check usage
 
 Dataset
   ✓ No dataset path provided — skipping dataset checks
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 2 warning(s) found. Review before launching.
-Anonymous run stats are collected to improve ComputeFence. To opt out: touch ~/.computefence_no_telemetry
-```
 
----
+Anonymous run stats are collected to improve ComputeFence.
+To opt out: touch ~/.computefence_no_telemetry
+What It Checks
 
-## What it checks
+CUDA and GPU visibility
+Confirms PyTorch can see the GPU. Catches silent CPU fallback before it runs for eight hours at 24 seconds per iteration instead of 0.4.
 
-- **CUDA and GPU visibility** — confirms PyTorch can see the GPU and training will not silently fall back to CPU
-- **HuggingFace cache path** — confirms model weights go to persistent storage not ephemeral disk that disappears on pod stop
-- **Accelerate GPU count** — confirms your distributed training config matches the GPUs actually on the instance
-- **Disk space headroom** — checks free space on workspace volumes and root disk. Warns below 20 GB, blocks below 5 GB
-- **Checkpoint output directory** — confirms your training script's output path is on persistent storage not ephemeral disk (`--output-dir`)
-- **Dataset integrity** — optional scan for duplicates, missing values, and conflicting labels (`--dataset`)
+HuggingFace cache path
+Confirms model weights are writing to persistent storage. If HF_HOME points to ephemeral disk your weights disappear when the pod stops.
 
----
+Accelerate GPU count
+Confirms your distributed training config matches the GPUs actually on the instance. A mismatch leaves GPUs idle for the entire run with no error message.
 
-## What it does not check
+Disk space headroom
+Checks free space on workspace volumes and root disk. Warns below 20 GB. Blocks below 5 GB. Catches the failure where checkpoints stop saving at 90 percent completion because the disk filled.
 
-- Training script correctness
-- Model architecture compatibility
-- Learning rate or hyperparameter safety
-- Runtime monitoring during the job
-- Dataloader throughput or GPU utilisation during training
+Checkpoint output directory
+Confirms your training script's output path is on persistent storage not ephemeral disk. HF_HOME and your checkpoint directory are separate paths — fixing one does not fix the other.
 
----
+Dataset integrity
+Optional scan for duplicates, missing values, and conflicting labels. Pass --dataset to enable.
 
-## Why this exists
+What It Does Not Check
+Training script correctness
+Model architecture compatibility
+Learning rate or hyperparameter safety
+Runtime behaviour during the job
+GPU utilisation or dataloader throughput during training
+
+ComputeFence addresses the job configuration layer before launch. It does not monitor the run.
+
+Why This Exists
 
 I burned approximately £1,000 on GPU training runs that failed silently.
 
-CUDA fell back to CPU with no error. 24 seconds per iteration instead of 0.4. Class weights caused loss collapse to 0.693 immediately. My dataset had 28,432 duplicate rows and 312 conflicting labels I only found after the run.
+CUDA fell back to CPU with no error message. 24 seconds per iteration instead of 0.4. Class weights caused loss to collapse to 0.693 immediately. My dataset had 28,432 duplicate rows and 312 conflicting labels I only found after the run finished.
 
 Nothing existed that caught these before the job started. So I built it.
 
----
+Real Operator Results
 
-## Real operator results
+David at Neuralic ran ComputeFence on a RunPod A100. It caught HF_HOME writing to /root/.cache and an Accelerate GPU count mismatch. He fixed both before launch.
 
-**David at Neuralic** ran ComputeFence on a RunPod A100. It caught HF_HOME writing to `/root/.cache` and an Accelerate GPU count mismatch. He fixed both before launch.
+Shahzeb Ali, a computer vision engineer running client training jobs on RunPod, confirmed the storage warning matches real pod behaviour. He would not have caught the HF_HOME issue without the tool.
 
-**Shahzeb Ali**, a computer vision engineer running client training jobs on RunPod, confirmed the storage warning matches real pod behaviour and would not have caught the HF_HOME issue explicitly without the tool.
+An independent Vast.ai operator ran computefence doctor six times before a real training job without being prompted or paid to do so. Seven runs appeared in telemetry overnight.
 
-**Seven overnight organic runs** appeared in telemetry from a Vast.ai operator running the tool six times in two minutes before a real training job — without being prompted or paid to do so.
+Thirteen independent ML engineers confirmed this problem across RunPod, Vast.ai, and AWS. Nine had lost checkpoints to ephemeral disk. Five confirmed Docker does not solve job-specific configuration mistakes.
 
----
+The Problem It Solves
 
-## The problem it solves
+A healthy GPU does not mean you are running the right job.
 
-A healthy GPU does not mean you are training the right job.
+Docker makes environments reproducible. It does not check whether your HuggingFace cache is writing to ephemeral storage that disappears on pod stop, whether your Accelerate config matches the GPUs on the instance, or whether your checkpoint output directory is on persistent storage.
 
-Docker makes environments reproducible. It does not check whether your HuggingFace cache is writing to ephemeral storage that disappears on pod stop, whether your Accelerate config matches the GPUs actually on the instance, or whether your training script's checkpoint output directory is on persistent storage. ComputeFence addresses the job configuration layer — not the environment layer.
+ComputeFence addresses the job configuration layer — not the environment layer.
 
-HF_HOME and your checkpoint output directory are separate paths. Fixing one does not fix the other. Both disappear on pod restart if they point to ephemeral disk.
+Founding Design Partner Pilot
 
-Thirteen independent ML engineers confirmed this problem independently across RunPod, Vast.ai, and AWS. Five confirmed that Docker does not solve job-specific configuration mistakes.
+Running high-cost GPU training jobs on RunPod or Vast.ai?
 
----
+Three founding design partner spots at $99 for three months:
 
-## Founding Design Partner pilot
+Personal audit of your launch templates and persistent storage configuration
+ComputeFence installed into your pod startup scripts — pre-flight runs automatically before every job
+Slack or Discord webhook alert when a check fails or blocks a launch
+Monthly 30-minute call where you shape what gets built next
+Money back if it does not catch one actionable issue in three months
 
-Running high-cost GPU training on RunPod or Vast.ai?
+Email francisco@booth.ws to apply.
 
-We offer a hands-on **Founding Design Partner** pilot at **$99 for 3 months**:
+Links
 
-- Personal audit of your launch templates and persistent storage configuration
-- ComputeFence installed into your pod startup scripts so pre-flight runs automatically on every job
-- Slack or Discord webhook alert when a check fails or blocks a launch
-- Monthly 30-minute call where you shape what gets built next
-- Money back if it does not catch one bad launch in 3 months
-
-Three spots available. Email **francisco@booth.ws** to apply.
-
----
-
-## Links
-
-- **GitHub**: [github.com/Francisco-Booth/ComputeFence](https://github.com/Francisco-Booth/ComputeFence)
-- **PyPI**: [pypi.org/project/computefence](https://pypi.org/project/computefence)
+GitHub: github.com/Francisco-Booth/ComputeFence
+PyPI: pypi.org/project/computefence
