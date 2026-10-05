@@ -130,7 +130,7 @@ Nothing existed that caught these before the job started. So I built it.
 
 **Shahzeb Ali**, a computer vision engineer running client training jobs on RunPod, confirmed the storage warning matches real pod behaviour. He would not have caught the HF_HOME issue without the tool.
 
-**An independent Vast.ai operator** ran computefence doctor six times before a real training job without being prompted or paid to do so. Seven runs appeared in telemetry overnight.
+**An independent Vast.ai operator** ran computefence doctor six times overnight before a real training job without being prompted or paid to do so.
 
 Thirteen independent ML engineers confirmed this problem across RunPod, Vast.ai, and AWS. Nine had lost checkpoints to ephemeral disk. Five confirmed Docker does not solve job-specific configuration mistakes.
 
@@ -143,6 +143,8 @@ A healthy GPU does not mean you are running the right job.
 Docker makes environments reproducible. It does not check whether your HuggingFace cache is writing to ephemeral storage that disappears on pod stop, whether your Accelerate config matches the GPUs on the instance, or whether your checkpoint output directory is on persistent storage.
 
 ComputeFence addresses the job configuration layer — not the environment layer.
+
+HF_HOME and your checkpoint output directory are separate paths. Fixing one does not fix the other. Both disappear on pod restart if they point to ephemeral disk.
 
 ---
 
@@ -164,5 +166,6 @@ Email francisco@booth.ws to apply.
 
 ## Links
 
-GitHub: github.com/Francisco-Booth/ComputeFence
-PyPI: pypi.org/project/computefence
+- GitHub: https://github.com/Francisco-Booth/ComputeFence
+- PyPI: https://pypi.org/project/computefence
+```
