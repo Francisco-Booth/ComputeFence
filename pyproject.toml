@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "computefence"
 dynamic = ["version"]
-description = "Pre-flight validation for GPU training runs on rented infrastructure"
+description = "Don't lose another RunPod checkpoint to ephemeral disk before your job bills."
 readme = "README.md"
 requires-python = ">=3.8"
 license = "MIT"
