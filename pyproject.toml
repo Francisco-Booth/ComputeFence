@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "computefence"
 dynamic = ["version"]
 description = "Don't lose another RunPod checkpoint to ephemeral disk before your job bills."
+keywords = ["runpod", "vast.ai", "gpu training", "hf_home", "cuda", "preflight", "machine learning", "mlops", "checkpoint"]
 readme = "README.md"
 requires-python = ">=3.8"
 license = "MIT"
