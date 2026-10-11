@@ -37,7 +37,7 @@ def check_storage():
             results.append({
                 "status": "warn",
                 "message": "HF_HOME is not set. HuggingFace will use default local cache.",
-                "fix": "Set HF_HOME to a persistent volume path before training"
+                "fix": "export HF_HOME=/workspace/.cache/huggingface"
             })
     elif hf_home.startswith("/root") or hf_home.startswith("/tmp"):
         results.append({

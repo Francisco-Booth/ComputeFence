@@ -1,4 +1,5 @@
 import hashlib
+import os
 import platform
 import sys
 import threading
@@ -35,6 +36,8 @@ def _send(payload: dict):
 
 def record_run(results: list):
     if _is_opted_out():
+        return
+    if os.environ.get("COMPUTEFENCE_DEV"):
         return
 
     warning_count = sum(1 for r in results if r.get("status") == "warn")
