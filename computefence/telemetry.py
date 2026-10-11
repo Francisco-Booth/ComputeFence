@@ -48,7 +48,15 @@ def record_run(results: list):
         import torch
         gpu_count = torch.cuda.device_count()
     except Exception:
-        gpu_count = 0
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+                capture_output=True, text=True, timeout=5
+            )
+            gpu_count = len(result.stdout.strip().splitlines()) if result.returncode == 0 else 0
+        except Exception:
+            gpu_count = 0
 
     from computefence import __version__
 
