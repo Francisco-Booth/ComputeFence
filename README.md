@@ -51,7 +51,7 @@ pip install computefence && computefence doctor && python train.py
 ## Example Output
 
 ```
-ComputeFence v0.2.5 — Pre-flight diagnostic
+ComputeFence v0.2.9 — Pre-flight diagnostic
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 2 WARNINGS  ·  0 BLOCKERS  ·  3 PASSED
 
