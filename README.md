@@ -1,3 +1,5 @@
+[![ComputeFence Action](https://img.shields.io/badge/GitHub%20Action-computefence--action-blue)](https://github.com/Francisco-Booth/computefence-action)
+
 # ComputeFence
 
 **Don't lose another RunPod checkpoint to ephemeral disk before your job bills.**
