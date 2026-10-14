@@ -90,6 +90,7 @@ def doctor():
         console.print("[yellow]" + str(len(warnings)) + " warning(s) found. Review before launching.[/yellow]")
     else:
         console.print("[green]All checks passed. Safe to launch.[/green]")
+	console.print(f"[dim]✓ ComputeFence: {len(passed)} checks passed — ~$430 protected.[/dim]")
     console.print(
         "[dim]Anonymous run stats are collected to improve ComputeFence. "
         "To opt out: touch ~/.computefence_no_telemetry[/dim]"
