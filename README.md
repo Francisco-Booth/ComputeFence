@@ -171,3 +171,11 @@ Email francisco@booth.ws to apply.
 - GitHub: https://github.com/Francisco-Booth/ComputeFence
 - PyPI: https://pypi.org/project/computefence
 ```
+
+
+**Live sessions:** The maintainer is available Mon–Fri 09:00–18:00 UK time for real-time pre-flight checks. Open a GitHub issue or DM on Discord (FounderCEO).
+
+
+
+
+
