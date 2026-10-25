@@ -5,6 +5,7 @@ from computefence.checks.environment import check_environment
 from computefence.checks.storage import check_disk_headroom, check_output_dir, check_storage
 from computefence.checks.dataset import check_dataset
 from computefence.telemetry import record_run
+from computefence.drift import save_env, check_drift
 
 console = Console()
 
@@ -28,6 +29,10 @@ def doctor():
     input_column = None
     label_column = None
     output_dir = None
+    save_env_flag = False
+    check_drift_flag = False
+    path_override = None
+
     args = sys.argv[1:]
     i = 0
     while i < len(args):
@@ -42,6 +47,15 @@ def doctor():
             i += 2
         elif args[i] == "--output-dir" and i + 1 < len(args):
             output_dir = args[i + 1]
+            i += 2
+        elif args[i] == "--save-env":
+            save_env_flag = True
+            i += 1
+        elif args[i] == "--check-drift":
+            check_drift_flag = True
+            i += 1
+        elif args[i] == "--path" and i + 1 < len(args):
+            path_override = args[i + 1]
             i += 2
         else:
             i += 1
@@ -82,6 +96,15 @@ def doctor():
     console.print("[bold blue]Dataset[/bold blue]")
     for result in dataset_results:
         print_result(result)
+
+    if check_drift_flag:
+        drift_results = check_drift(output_dir=output_dir, path_override=path_override)
+        console.print()
+        console.print("[bold blue]Drift[/bold blue]")
+        for result in drift_results:
+            print_result(result)
+        all_results = all_results + drift_results
+
     console.print()
     console.print("━" * 50)
     if failures:
@@ -96,6 +119,18 @@ def doctor():
         "To opt out: touch ~/.computefence_no_telemetry[/dim]"
     )
     console.print()
+
+    if save_env_flag:
+        if failures:
+            console.print("[yellow]⚠ --save-env skipped: blockers present. Fix errors first.[/yellow]")
+            console.print()
+        else:
+            success, msg = save_env(output_dir=output_dir, path_override=path_override)
+            if success:
+                console.print(f"[green]✓ Environment fingerprint saved to {msg}[/green]")
+            else:
+                console.print(f"[yellow]⚠ Could not save fingerprint: {msg}[/yellow]")
+            console.print()
 
     record_run(all_results)
 
