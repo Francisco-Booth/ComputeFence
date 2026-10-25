@@ -1,6 +1,7 @@
 import hashlib
 import os
 import platform
+import subprocess
 import sys
 import threading
 import uuid
@@ -14,6 +15,57 @@ OPT_OUT_FILE = Path.home() / ".computefence_no_telemetry"
 
 def _is_opted_out():
     return OPT_OUT_FILE.exists()
+
+
+def get_project_id() -> str:
+    # Primary: git remote URL hash — survives pod recreation
+    try:
+        git_url = subprocess.check_output(
+            ["git", "config", "--get", "remote.origin.url"],
+            stderr=subprocess.DEVNULL
+        ).decode().strip()
+        if git_url:
+            return hashlib.sha256(git_url.encode()).hexdigest()[:16]
+    except Exception:
+        pass
+
+    # Fallback: persistent volume token
+    token_path = "/workspace/.computefence_id"
+    try:
+        if os.path.exists(token_path):
+            with open(token_path) as f:
+                token = f.read().strip()
+                if token:
+                    return token
+    except Exception:
+        pass
+
+    # Last resort: ephemeral cwd hash
+    return "ephemeral-" + hashlib.sha256(os.getcwd().encode()).hexdigest()[:8]
+
+
+def get_execution_mode() -> str:
+    if os.environ.get("GITHUB_ACTIONS"):
+        return "github-action"
+    if os.environ.get("CI"):
+        return "ci"
+    try:
+        ppid = os.getppid()
+        result = subprocess.run(
+            ["ps", "-p", str(ppid), "-o", "comm="],
+            capture_output=True, text=True, timeout=2
+        )
+        parent = result.stdout.strip().lower()
+        if "bash" in parent or "sh" in parent:
+            cmdline_path = f"/proc/{ppid}/cmdline"
+            if os.path.exists(cmdline_path):
+                with open(cmdline_path, "rb") as f:
+                    cmdline = f.read().decode(errors="replace").replace("\x00", " ")
+                if "on-start" in cmdline or "startup" in cmdline or "entrypoint" in cmdline:
+                    return "on-start"
+    except Exception:
+        pass
+    return "manual"
 
 
 def _send(payload: dict):
@@ -49,7 +101,6 @@ def record_run(results: list):
         gpu_count = torch.cuda.device_count()
     except Exception:
         try:
-            import subprocess
             result = subprocess.run(
                 ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
                 capture_output=True, text=True, timeout=5
@@ -69,6 +120,9 @@ def record_run(results: list):
         "blocker_count": blocker_count,
         "pass_count": pass_count,
         "opted_in": True,
+        "project_id": get_project_id(),
+        "run_id": str(uuid.uuid4()),
+        "execution_mode": get_execution_mode(),
     }
 
     thread = threading.Thread(target=_send, args=(payload,), daemon=True)
