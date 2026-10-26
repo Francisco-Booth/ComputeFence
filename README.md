@@ -2,9 +2,9 @@
 
 # ComputeFence
 
-**Don't lose another RunPod checkpoint to ephemeral disk before your job bills.**
+**Stop paying for silent failures.**
 
-One command before your training job starts. Catches the configuration mistakes that cost you hours of GPU compute and lost weights before billing begins.
+One command before your training job starts. Catches the configuration mistakes that cost you hours of GPU compute and lost checkpoints — before billing begins.
 
 Built for RunPod, Vast.ai, Lambda Labs, CoreWeave, Paperspace, and any bare metal GPU provider.
 
@@ -50,35 +50,63 @@ pip install computefence && computefence doctor && python train.py
 
 ---
 
+## Drift Detection
+
+Save a fingerprint of your working environment after a clean run:
+
+```bash
+computefence doctor --save-env
+```
+
+On your next pod, check whether anything has changed:
+
+```bash
+computefence doctor --check-drift
+```
+
+Example output when the pod environment has drifted:
+
+Drift
+⚠ [Drift] PyTorch version changed: 2.4.0+cu121 → 2.8.0+cu128
+Fix: Pin torch version in your requirements or Dockerfile.
+⚠ [Drift] CUDA version changed: 12.1 → 12.8
+Fix: Ensure your pod template uses the same CUDA base image.
+⚠ [Drift] GPU count changed: 2 → 1
+Fix: Check your pod configuration matches the saved environment.
+
+
+Drift findings are warnings only — they never block a launch. The fingerprint is written to `.computefence-lock.json` on your persistent volume (`/workspace` or `--path` to override). It survives pod stop and restart.
+
+---
+
 ## Example Output
 
-```
-ComputeFence v0.2.9 — Pre-flight diagnostic
+ComputeFence v0.2.14 — Pre-flight diagnostic
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-2 WARNINGS  ·  0 BLOCKERS  ·  3 PASSED
+2 WARNINGS · 0 BLOCKERS · 6 PASSED
 
 Environment
-  ✓ Python 3.11.4
-  ✓ PyTorch 2.1.0 detected
-  ✓ CUDA available — NVIDIA A40
+✓ Python 3.12.3
+✓ PyTorch 2.8.0+cu128 detected (CUDA available — NVIDIA RTX PRO 4500)
+⚠ No Accelerate config found — skipping GPU count check
+Fix: Run ‘accelerate config’ to create a configuration file
 
 Storage
-  ⚠ HF_HOME is not set. HuggingFace will cache to ephemeral local disk.
-    Fix: export HF_HOME=/workspace/.cache/huggingface
-
-  ⚠ Root disk (/) — 14.3 GB free of 460.4 GB (below 20 GB threshold)
-    Fix: Free up disk space or move checkpoints to a larger volume
-         df -h to check usage
+✓ HF_HOME is set to /workspace/.cache/huggingface/
+✓ Persistent volume(s) detected: /workspace
+✓ Volume /workspace — 49.9 GB free of 50.0 GB
+✓ Root disk (/) — 49.9 GB free of 50.0 GB
 
 Dataset
-  ✓ No dataset path provided — skipping dataset checks
+⚠ No dataset path provided — skipping dataset checks
+Fix: Run with --dataset path/to/your/dataset.csv to enable dataset checks
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 2 warning(s) found. Review before launching.
 
 Anonymous run stats are collected to improve ComputeFence.
 To opt out: touch ~/.computefence_no_telemetry
-```
+
 
 ---
 
@@ -101,6 +129,9 @@ Confirms your training script's output path is on persistent storage not ephemer
 
 **Dataset integrity**
 Optional scan for duplicates, missing values, and conflicting labels. Pass --dataset to enable.
+
+**Environment drift detection**
+Saves a 4-vector fingerprint (PyTorch/CUDA version, storage paths, GPU count and compute capability, critical library versions) and diffs it on the next pod. Catches silent environment changes between runs.
 
 ---
 
@@ -147,6 +178,16 @@ Docker makes environments reproducible. It does not check whether your HuggingFa
 ComputeFence addresses the job configuration layer — not the environment layer.
 
 HF_HOME and your checkpoint output directory are separate paths. Fixing one does not fix the other. Both disappear on pod restart if they point to ephemeral disk.
+
+---
+
+## Telemetry
+
+Anonymous run statistics are collected on every run to help improve ComputeFence. No personal data, no code, no model weights. To opt out:
+
+```bash
+touch ~/.computefence_no_telemetry
+```
 
 ---
 
