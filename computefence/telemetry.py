@@ -29,7 +29,7 @@ def get_project_id() -> str:
     except Exception:
         pass
 
-    # Fallback: persistent volume token
+    # Fallback: persistent volume token — read or create
     token_path = "/workspace/.computefence_id"
     try:
         if os.path.exists(token_path):
@@ -37,6 +37,11 @@ def get_project_id() -> str:
                 token = f.read().strip()
                 if token:
                     return token
+        # No token exists — generate and write one
+        new_token = str(uuid.uuid4())
+        with open(token_path, "w") as f:
+            f.write(new_token)
+        return new_token
     except Exception:
         pass
 
