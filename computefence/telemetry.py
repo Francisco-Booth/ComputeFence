@@ -12,24 +12,25 @@ SUPABASE_ANON_KEY = "sb_publishable_A2zwbfTFiOs63jz8313GXg_elw3F5dy"
 TABLE = "computefence_runs"
 OPT_OUT_FILE = Path.home() / ".computefence_no_telemetry"
 
-
 def _is_opted_out():
     return OPT_OUT_FILE.exists()
 
-
 def get_project_id() -> str:
-    # Primary: git remote URL hash — survives pod recreation
+    # Primary: persistent home directory token — not linked to any repo
+    home_token_path = Path.home() / ".computefence" / "id"
     try:
-        git_url = subprocess.check_output(
-            ["git", "config", "--get", "remote.origin.url"],
-            stderr=subprocess.DEVNULL
-        ).decode().strip()
-        if git_url:
-            return hashlib.sha256(git_url.encode()).hexdigest()[:16]
+        if home_token_path.exists():
+            token = home_token_path.read_text().strip()
+            if token:
+                return token
+        home_token_path.parent.mkdir(parents=True, exist_ok=True)
+        new_token = str(uuid.uuid4())
+        home_token_path.write_text(new_token)
+        return new_token
     except Exception:
         pass
 
-    # Fallback: persistent volume token — read or create
+    # Fallback: persistent volume token at /workspace
     token_path = "/workspace/.computefence_id"
     try:
         if os.path.exists(token_path):
@@ -37,7 +38,6 @@ def get_project_id() -> str:
                 token = f.read().strip()
                 if token:
                     return token
-        # No token exists — generate and write one
         new_token = str(uuid.uuid4())
         with open(token_path, "w") as f:
             f.write(new_token)
@@ -47,7 +47,6 @@ def get_project_id() -> str:
 
     # Last resort: ephemeral cwd hash
     return "ephemeral-" + hashlib.sha256(os.getcwd().encode()).hexdigest()[:8]
-
 
 def get_execution_mode() -> str:
     if os.environ.get("GITHUB_ACTIONS"):
@@ -72,7 +71,6 @@ def get_execution_mode() -> str:
         pass
     return "manual"
 
-
 def _send(payload: dict):
     try:
         import requests
@@ -90,17 +88,14 @@ def _send(payload: dict):
     except Exception:
         pass
 
-
 def record_run(results: list):
     if _is_opted_out():
         return
     if os.environ.get("COMPUTEFENCE_DEV"):
         return
-
     warning_count = sum(1 for r in results if r.get("status") == "warn")
     blocker_count = sum(1 for r in results if r.get("status") == "fail")
     pass_count = sum(1 for r in results if r.get("status") == "pass")
-
     try:
         import torch
         gpu_count = torch.cuda.device_count()
@@ -113,9 +108,7 @@ def record_run(results: list):
             gpu_count = len(result.stdout.strip().splitlines()) if result.returncode == 0 else 0
         except Exception:
             gpu_count = 0
-
     from computefence import __version__
-
     payload = {
         "version": __version__,
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}",
@@ -129,7 +122,6 @@ def record_run(results: list):
         "run_id": str(uuid.uuid4()),
         "execution_mode": get_execution_mode(),
     }
-
     thread = threading.Thread(target=_send, args=(payload,), daemon=True)
     thread.start()
     thread.join(timeout=4)
