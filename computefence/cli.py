@@ -115,7 +115,8 @@ def doctor():
         console.print("[green]All checks passed. Safe to launch.[/green]")
         console.print(f"[dim]✓ ComputeFence: {len(passed)} checks passed — ~$430 protected.[/dim]")
     console.print(
-        "[dim]Anonymous run stats are collected to improve ComputeFence. "
+        "[dim]Anonymous run stats are collected to improve ComputeFence "
+        "(version, Python version, platform, GPU count, check results — no file paths, no repo URLs). "
         "To opt out: touch ~/.computefence_no_telemetry[/dim]"
     )
     console.print()
