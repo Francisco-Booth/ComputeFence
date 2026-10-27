@@ -114,6 +114,9 @@ def doctor():
     else:
         console.print("[green]All checks passed. Safe to launch.[/green]")
         console.print(f"[dim]✓ ComputeFence: {len(passed)} checks passed — ~$430 protected.[/dim]")
+        console.print()
+        console.print("[dim]Tip: add this to your launch script to run automatically every time:[/dim]")
+        console.print('[dim]  alias train="computefence doctor && python train.py"[/dim]')
     console.print(
         "[dim]Anonymous run stats are collected to improve ComputeFence "
         "(version, Python version, platform, GPU count, check results — no file paths, no repo URLs). "
@@ -128,7 +131,8 @@ def doctor():
         else:
             success, msg = save_env(output_dir=output_dir, path_override=path_override)
             if success:
-                console.print(f"[green]✓ Environment fingerprint saved to {msg}[/green]")
+                console.print(f"[green]✓ Baseline saved to {msg}[/green]")
+                console.print("[dim]Commit this file to your training repo. On any new pod, clone your repo and run --check-drift to verify the environment matches your last known-good run.[/dim]")
             else:
                 console.print(f"[yellow]⚠ Could not save fingerprint: {msg}[/yellow]")
             console.print()

@@ -36,6 +36,18 @@ def _find_persistent_volume(path_override=None):
 
 
 def _get_lock_path(path_override=None):
+    # Primary: git repo root (project-level persistence)
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=3
+        )
+        if result.returncode == 0:
+            return Path(result.stdout.strip()) / "computefence.lock"
+    except Exception:
+        pass
+    # Fallback: persistent volume (pod-level persistence)
     vol = _find_persistent_volume(path_override)
     if vol is None:
         return None
