@@ -24,6 +24,19 @@ uvx computefence doctor
 
 ---
 
+
+## ☁️ RunPod One-Click Template
+
+If you train on RunPod, use the pre-built community template — ComputeFence is pre-installed and runs automatically on pod start.
+
+**[→ Launch ComputeFence Pre-Flight Template](https://runpod.io/console/deploy?template=cq5psqzck6)**
+
+- Runs `computefence doctor` on every pod start
+- Logs preflight output to `/workspace/computefence-preflight.log`
+- `HF_HOME` set to `/workspace/.cache/huggingface` by default
+- Persistent `/workspace` volume included
+
+
 ## Usage
 
 ```bash
