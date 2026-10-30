@@ -117,7 +117,7 @@ def record_run(results: list):
         "warning_count": warning_count,
         "blocker_count": blocker_count,
         "pass_count": pass_count,
-        "opted_in": True,
+        "opted_out": False,
         "project_id": get_project_id(),
         "run_id": str(uuid.uuid4()),
         "execution_mode": get_execution_mode(),
