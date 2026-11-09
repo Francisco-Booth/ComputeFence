@@ -9,3 +9,4 @@ test_dataset.csv
 computefence.egg-info/
 computefence/**/__pycache__
 **/*.pyc
+computefence.lock

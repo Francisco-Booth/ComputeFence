@@ -10,10 +10,10 @@ from pathlib import Path
 SUPABASE_URL = "https://pidpadpudbcdldyvrlog.supabase.co"
 SUPABASE_ANON_KEY = "sb_publishable_A2zwbfTFiOs63jz8313GXg_elw3F5dy"
 TABLE = "computefence_runs"
-OPT_OUT_FILE = Path.home() / ".computefence_no_telemetry"
+OPT_IN_FILE = Path.home() / ".computefence_telemetry"
 
-def _is_opted_out():
-    return OPT_OUT_FILE.exists()
+def _is_opted_in():
+    return OPT_IN_FILE.exists()
 
 def get_project_id() -> str:
     # Primary: persistent home directory token — not linked to any repo
@@ -89,7 +89,7 @@ def _send(payload: dict):
         pass
 
 def record_run(results: list):
-    if _is_opted_out():
+    if not _is_opted_in():
         return
     if os.environ.get("COMPUTEFENCE_DEV"):
         return
@@ -117,7 +117,7 @@ def record_run(results: list):
         "warning_count": warning_count,
         "blocker_count": blocker_count,
         "pass_count": pass_count,
-        "opted_out": False,
+        "opted_in": True,
         "project_id": get_project_id(),
         "run_id": str(uuid.uuid4()),
         "execution_mode": get_execution_mode(),

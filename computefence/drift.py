@@ -1,5 +1,5 @@
 """
-Drift detection for ComputeFence v0.2.13.
+Drift detection for ComputeFence v0.3.2.
 
 --save-env  : capture a 4-vector environment fingerprint after a clean run
               and write it to .computefence-lock.json in the persistent volume.
@@ -9,6 +9,8 @@ Drift detection for ComputeFence v0.2.13.
 
 import json
 import os
+import shutil
+import tempfile
 from pathlib import Path
 
 
@@ -36,19 +38,29 @@ def _find_persistent_volume(path_override=None):
 
 
 def _get_lock_path(path_override=None):
-    # Primary: git repo root (project-level persistence)
-    try:
-        import subprocess
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, timeout=3
-        )
-        if result.returncode == 0:
-            return Path(result.stdout.strip()) / "computefence.lock"
-    except Exception:
-        pass
+    # --path always wins
+    if path_override:
+        vol = _find_persistent_volume(path_override)
+        if vol is None:
+            return None
+        return vol / LOCK_FILENAME
+
+    # Secondary: git repo root (project-level persistence)
+    git_bin = shutil.which("git")
+    if git_bin:
+        try:
+            import subprocess
+            result = subprocess.run(
+                [git_bin, "rev-parse", "--show-toplevel"],
+                capture_output=True, text=True, timeout=3
+            )
+            if result.returncode == 0:
+                return Path(result.stdout.strip()) / "computefence.lock"
+        except Exception:
+            pass
+
     # Fallback: persistent volume (pod-level persistence)
-    vol = _find_persistent_volume(path_override)
+    vol = _find_persistent_volume()
     if vol is None:
         return None
     return vol / LOCK_FILENAME
@@ -120,16 +132,34 @@ def save_env(output_dir=None, path_override=None):
             "No persistent volume found. Cannot save environment fingerprint. "
             "Use --path /your/persistent/dir to specify one."
         )
+
+    # SEC-1: refuse symlinks
+    if lock_path.is_symlink():
+        return False, f"Refusing to write: {lock_path} is a symlink."
+
     fingerprint = capture_fingerprint(output_dir)
     try:
-        with open(lock_path, "w") as f:
-            json.dump(fingerprint, f, indent=2)
+        # SEC-1: atomic write via temp file + os.replace()
+        dir_ = lock_path.parent
+        fd, tmp_path = tempfile.mkstemp(dir=dir_, prefix=".computefence-tmp-")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(fingerprint, f, indent=2)
+            os.replace(tmp_path, lock_path)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
         return True, str(lock_path)
     except Exception as e:
         return False, f"Failed to write {lock_path}: {e}"
 
 
 def _diff_vectors(saved, current):
+    from rich.markup import escape
+
     results = []
 
     s_torch = saved.get("torch", {})
@@ -137,13 +167,13 @@ def _diff_vectors(saved, current):
     if s_torch.get("torch_version") != c_torch.get("torch_version"):
         results.append({
             "status": "warn",
-            "message": f"[Drift] PyTorch version changed: {s_torch.get('torch_version')} → {c_torch.get('torch_version')}",
+            "message": f"[Drift] PyTorch version changed: {escape(str(s_torch.get('torch_version')))} → {escape(str(c_torch.get('torch_version')))}",
             "fix": "Pin torch version in your requirements or Dockerfile.",
         })
     if s_torch.get("cuda_version") != c_torch.get("cuda_version"):
         results.append({
             "status": "warn",
-            "message": f"[Drift] CUDA version changed: {s_torch.get('cuda_version')} → {c_torch.get('cuda_version')}",
+            "message": f"[Drift] CUDA version changed: {escape(str(s_torch.get('cuda_version')))} → {escape(str(c_torch.get('cuda_version')))}",
             "fix": "Ensure your pod template uses the same CUDA base image.",
         })
 
@@ -152,7 +182,7 @@ def _diff_vectors(saved, current):
     if s_stor.get("hf_home") != c_stor.get("hf_home"):
         results.append({
             "status": "warn",
-            "message": f"[Drift] HF_HOME changed: {s_stor.get('hf_home')} → {c_stor.get('hf_home')}",
+            "message": f"[Drift] HF_HOME changed: {escape(str(s_stor.get('hf_home')))} → {escape(str(c_stor.get('hf_home')))}",
             "fix": "Set HF_HOME consistently in your startup script.",
         })
     if s_stor.get("output_dir_persistent") and not c_stor.get("output_dir_persistent"):
@@ -167,13 +197,13 @@ def _diff_vectors(saved, current):
     if s_gpu.get("gpu_count") != c_gpu.get("gpu_count"):
         results.append({
             "status": "warn",
-            "message": f"[Drift] GPU count changed: {s_gpu.get('gpu_count')} → {c_gpu.get('gpu_count')}",
+            "message": f"[Drift] GPU count changed: {escape(str(s_gpu.get('gpu_count')))} → {escape(str(c_gpu.get('gpu_count')))}",
             "fix": "Check your pod configuration matches the saved environment.",
         })
     if s_gpu.get("compute_capabilities") != c_gpu.get("compute_capabilities"):
         results.append({
             "status": "warn",
-            "message": f"[Drift] GPU compute capability changed: {s_gpu.get('compute_capabilities')} → {c_gpu.get('compute_capabilities')}",
+            "message": f"[Drift] GPU compute capability changed: {escape(str(s_gpu.get('compute_capabilities')))} → {escape(str(c_gpu.get('compute_capabilities')))}",
             "fix": "Different GPU hardware detected. Verify model compatibility.",
         })
 
@@ -185,7 +215,7 @@ def _diff_vectors(saved, current):
         if sv != cv:
             results.append({
                 "status": "warn",
-                "message": f"[Drift] {lib} version changed: {sv} → {cv}",
+                "message": f"[Drift] {escape(lib)} version changed: {escape(str(sv))} → {escape(str(cv))}",
                 "fix": f"Pin {lib} version in your requirements.",
             })
 
@@ -206,11 +236,22 @@ def check_drift(output_dir=None, path_override=None):
     if not lock_path.exists():
         return [{"status": "warn", "message": f"No saved fingerprint at {lock_path}.", "fix": "Run: computefence doctor --save-env"}]
 
+    # SEC-1: refuse symlinks on read path too
+    if lock_path.is_symlink():
+        return [{"status": "warn", "message": f"Refusing to read: {lock_path} is a symlink.", "fix": "Delete the symlink and re-run: computefence doctor --save-env"}]
+
     try:
         with open(lock_path) as f:
             saved = json.load(f)
     except Exception as e:
         return [{"status": "warn", "message": f"Could not read fingerprint: {e}", "fix": "Delete the file and re-run: computefence doctor --save-env"}]
 
-    current = capture_fingerprint(output_dir)
-    return _diff_vectors(saved, current)
+    # BUG-3: validate lockfile shape before comparing
+    if not isinstance(saved, dict) or "torch" not in saved:
+        return [{"status": "warn", "message": "Saved fingerprint has unexpected format.", "fix": "Delete the file and re-run: computefence doctor --save-env"}]
+
+    try:
+        current = capture_fingerprint(output_dir)
+        return _diff_vectors(saved, current)
+    except Exception as e:
+        return [{"status": "warn", "message": f"Drift comparison failed: {e}", "fix": "Re-run: computefence doctor --save-env"}]
