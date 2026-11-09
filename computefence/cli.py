@@ -35,6 +35,7 @@ def doctor():
     check_drift_flag = False
     path_override = None
     json_flag = False
+    skip_ids = set()
 
     args = sys.argv[1:]
     i = 0
@@ -63,6 +64,9 @@ def doctor():
         elif args[i] == "--json":
             json_flag = True
             i += 1
+        elif args[i] == "--skip" and i + 1 < len(args):
+            skip_ids = set(args[i + 1].split(","))
+            i += 2
         else:
             i += 1
 
@@ -84,6 +88,16 @@ def doctor():
     if check_drift_flag:
         drift_results = check_drift(output_dir=output_dir, path_override=path_override)
         all_results = all_results + drift_results
+    else:
+        drift_results = []
+
+    # Apply --skip filter
+    if skip_ids:
+        all_results = [r for r in all_results if r.get("id") not in skip_ids]
+        env_results = [r for r in env_results if r.get("id") not in skip_ids]
+        storage_results = [r for r in storage_results if r.get("id") not in skip_ids]
+        dataset_results = [r for r in dataset_results if r.get("id") not in skip_ids]
+        drift_results = [r for r in drift_results if r.get("id") not in skip_ids]
 
     failures = [r for r in all_results if r["status"] == "fail"]
     warnings = [r for r in all_results if r["status"] == "warn"]
@@ -100,7 +114,7 @@ def doctor():
             },
             "checks": [
                 {
-                    "id": r.get("id", r.get("message", "")[:40].lower().replace(" ", "_")),
+                    "id": r["id"],
                     "status": r["status"],
                     "message": r.get("message", ""),
                     "remediation": r.get("fix", ""),
@@ -185,7 +199,7 @@ def main():
     else:
         console.print(f"[red]Unknown command: {escape(args[0])}[/red]")
         console.print("Usage: computefence doctor")
-        sys.exit(1)
+        sys.exit(64)
 
 if __name__ == "__main__":
     main()
