@@ -10,3 +10,6 @@ computefence.egg-info/
 computefence/**/__pycache__
 **/*.pyc
 computefence.lock
+
+computefence/checks/__pycache__/
+computefence/__pycache__/
