@@ -215,6 +215,12 @@ Email francisco@booth.ws to apply.
 
 ---
 
+## Acknowledgements
+
+Thanks to **Steve Simo** for a thorough independent security and code review of v0.3.1.
+
+---
+
 ## Links
 
 - GitHub: https://github.com/Francisco-Booth/ComputeFence
