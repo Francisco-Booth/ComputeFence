@@ -1,5 +1,11 @@
 [![ComputeFence Action](https://img.shields.io/badge/GitHub%20Action-computefence--action-blue)](https://github.com/Francisco-Booth/computefence-action)
 
+## Sponsor
+
+If ComputeFence saves you a failed run, consider sponsoring: [github.com/sponsors/Francisco-Booth](https://github.com/sponsors/Francisco-Booth)
+
+**$99 design partner spot** — priority fixes, monthly call, refunded if it finds nothing on your first job. [Apply via Stripe](https://buy.stripe.com/7sY00ib6IcTc1PD6PdaEE05)
+
 # ComputeFence
 
 **Stop paying for silent failures.**
